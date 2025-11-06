@@ -7,8 +7,12 @@ f.close()
 
 ybc = YBCFile(inby)
 # script is populated, file is torn apart, reconstructed then verified. 
+scr = ybc.dump_script()
+f = open("Chapter003_text.csv", "w")
+f.write(scr)
+f.close()
 
 # write new file 
-f = open(os.path.basename(sys.argv[1]).split(".")[0] + "_e.ybc", "wb")
-f.write(ybc.new_bytes)
-f.close()
+#f = open(os.path.basename(sys.argv[1]).split(".")[0] + "_e.ybc", "wb")
+#f.write(ybc.new_bytes)
+#f.close()

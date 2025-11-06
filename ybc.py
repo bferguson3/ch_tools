@@ -424,6 +424,19 @@ class YBCFile():
 
         self.new_bytes = outby
     ###
+    def dump_script(self):
+        csv = ""
+        i = 0 
+        while i < len(self.scene_elements):
+            if(self.scene_elements[i].cmd == bSHOW_MESSAGE):
+                _i = int.from_bytes(self.scene_elements[i].vars[:2], byteorder="little")
+                csv += hex(self.lines[_i].addr) + "," + hex(self.lines[_i].fin) + "," + self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
+            else:
+                csv += "scr_cmd," + self.scene_elements[i].desc + "\n"
+            i += 1
+            
+        return csv
+    ###
 ###
 
 
