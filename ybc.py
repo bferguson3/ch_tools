@@ -156,7 +156,7 @@ class YBCFile():
             #
             elif(nxt==bUNKNOWN_1):
                 _e = YBCElement(by[_ctr:_ctr+8])
-                _e.desc = "[?unknown]"
+                _e.desc = "[Unknown code 1]" #?unknown
                 _ctr += 4 # 01 00 00 20 
                 self.scene_elements.append(_e)
             #
@@ -291,7 +291,7 @@ class YBCFile():
             #
             elif(nxt==bUNKNOWN_2):
                 _e = YBCElement(by[_ctr:_ctr+4])
-                _e.desc = "[Unknown code]"
+                _e.desc = "[Unknown code 2]" #Unknown code
                 self.scene_elements.append(_e)
             elif(nxt==bCHANGE_FONT):
                 _e = YBCElement(by[_ctr:_ctr+12])
@@ -324,7 +324,7 @@ class YBCFile():
                 break 
             else:
                 _e = YBCElement(by[_ctr:_ctr+4])
-                _e.desc = "Error: Unknown code:"+ by[_ctr:_ctr+4]
+                _e.desc = "Error: Unknown code:"+ str(by[_ctr:_ctr+4])
                 self.scene_elements.append(_e)
             _ctr += 4
             _script_ct += 1
@@ -365,7 +365,7 @@ class YBCFile():
         _ofs = int.from_bytes(self.text_path_loc, byteorder="little") # get script offset
         while i < _var:
             _adr = int.from_bytes(by[_ctr:_ctr+2], byteorder="little") # start pos 
-            _fin = int.from_bytes(by[_ctr+2:_ctr+4], byteorder="little") # flags, maybe?
+            _fin = int.from_bytes(by[_ctr+2:_ctr+4], byteorder="little") # byte length * 16
             # BUG: 
             _len = int.from_bytes(by[_ctr+4:_ctr+6], byteorder="little") - _adr # calculate from next pointer! see wiki 
             # make dialogue object 
@@ -430,7 +430,10 @@ class YBCFile():
         while i < len(self.scene_elements):
             if(self.scene_elements[i].cmd == bSHOW_MESSAGE):
                 _i = int.from_bytes(self.scene_elements[i].vars[:2], byteorder="little")
-                csv += hex(self.lines[_i].addr) + "," + hex(self.lines[_i].fin) + "," + self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
+                csv += "txt,"+self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
+                _ex = 0x10 * len(self.lines[_i].bytes)
+                if(_ex != self.lines[_i].fin):
+                    print("ERROR: fin size mismatch!")
             else:
                 csv += "scr_cmd," + self.scene_elements[i].desc + "\n"
             i += 1
