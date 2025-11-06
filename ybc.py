@@ -430,7 +430,7 @@ class YBCFile():
         while i < len(self.scene_elements):
             if(self.scene_elements[i].cmd == bSHOW_MESSAGE):
                 _i = int.from_bytes(self.scene_elements[i].vars[:2], byteorder="little")
-                csv += "txt,"+self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
+                csv += "txt,,"+self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
                 _ex = 0x10 * len(self.lines[_i].bytes)
                 if(_ex != self.lines[_i].fin):
                     print("ERROR: fin size mismatch!")
