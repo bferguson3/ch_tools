@@ -18,11 +18,22 @@ f = open(sys.argv[2], "rb")
 orig_ybc = f.read()
 f.close()
 
+# Split CSV, and atrophy all final commas 
 lines = csv.split("\n")
 i = 0
 while i < len(lines):
     lines[i] = lines[i].split(",")
     i += 1
+i = 0
+while i < len(lines):
+    if (len(lines[i]) > 3):
+        _f = 3
+        while _f < (len(lines[i])):
+            lines[i][2] += "," + lines[i][_f]
+            _f += 1
+        print(lines[i][2])
+    i += 1
+        
     
 ybc = YBCFile() 
 
