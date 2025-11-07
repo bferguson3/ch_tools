@@ -3,7 +3,7 @@
 #  by bent86
 # wiki: https://w.atwiki.jp/crosshermit/pages/16.html
 
-import math , struct 
+import math , struct , re
 
 bCHANGE_SCREEN = b'\x38\x00\x08\x00'    # 1
 bSHOW_IMAGE = b'\x43\x00\x08\x00'       # 2a
@@ -55,7 +55,21 @@ class DialogueLine():
 ###
 
 class YBCFile():
-    def __init__(self, by):
+    def __init__(self, by=None):
+        if by == None: 
+            self.old_bytes = bytes([0])
+            self.new_bytes = bytes([0])
+            self.scene_elements = []
+            self.header = bytes(8)
+            self.remainder_bytes = bytes([0])
+            self.file_path_loc = bytes([0,0,0,0])
+            self.text_path_loc = bytes([0,0,0,0])
+            self.title_file=""
+            self.next_file=""
+            self.num_lines=0
+            self.lines=[]
+            return
+        ##
         self.old_bytes = by 
         self.new_bytes = []
         #
@@ -82,28 +96,26 @@ class YBCFile():
         _script_ct = 0
         while(_ctr < len(by)):
             nxt = by[_ctr:_ctr+4]
-            #print(_script_ct, end=" : ")
             #
             if(nxt == bCHANGE_SCREEN):
                 _e = YBCElement(by[_ctr:_ctr+8]) # 8b 
                 _e.desc = "[Change Screen: "
-                #print("[Change Screen: ", end="")
-                _ctr += 4 
+                _ctr += 4 # xx 00 00 20 
                 if(by[_ctr] == 0):
-                    _e.desc += "Darken ]"
+                    _e.desc += "Darken ] (" + str(by[_ctr]) + ")"
                     #print("Darken]")
                 elif(by[_ctr] == 1):
-                    _e.desc += "???]"
+                    _e.desc += "???] (" + str(by[_ctr]) + ")"
                 elif(by[_ctr] == 2):
-                    _e.desc += "Lighten]"
+                    _e.desc += "Lighten] (" + str(by[_ctr]) + ")"
                 elif(by[_ctr] == 3):
-                    _e.desc += "Fadein then Lighten]"
+                    _e.desc += "Fadein then Lighten] (" + str(by[_ctr]) + ")"
                 elif(by[_ctr] == 4):
-                    _e.desc += "Fadeout then Darken]"
+                    _e.desc += "Fadeout then Darken] (" + str(by[_ctr]) + ")"
                 elif(by[_ctr] == 5):
-                    _e.desc += "Fade-in from white]"
+                    _e.desc += "Fade-in from white] (" + str(by[_ctr]) + ")"
                 elif(by[_ctr] == 6):
-                    _e.desc += "Fade-out to white]"
+                    _e.desc += "Fade-out to white] (" + str(by[_ctr]) + ")"
                 # error check 
                 #if(by[_ctr+1:_ctr+4] != b'\x00\x00\x20'):
                 #    print("Error: invalid change screen sequence")
@@ -111,35 +123,49 @@ class YBCFile():
             #
             elif(nxt == bSHOW_IMAGE):
                 _e = YBCElement(by[_ctr:_ctr+8])
-                _ctr += 4
-                _ofs = int(by[_ctr]) + 48 + int.from_bytes(self.file_path_loc, byteorder="little")
-                _e.desc = "[Show image &"+ hex(_ofs)+ "]"
-                #if(by[_ctr+1:_ctr+4] != b'\x00\x00\x00'):
-                #    print("Error: invalid display image sequence")
+                _ctr += 4 # 4 bytes, usually xx 00 00 00  where xx almost always 1
+                _ofs = int.from_bytes(by[_ctr:_ctr+4], byteorder="little") + 48 + int.from_bytes(self.file_path_loc, byteorder="little")
+                _e.desc = "[Show image &"+ str(int.from_bytes(by[_ctr:_ctr+4], byteorder="little"))+ "] (&" + str(_ofs)+")"
                 self.scene_elements.append(_e)
             #
             elif(nxt == bXYWH):
                 _e = YBCElement(by[_ctr:_ctr+40])
-                _ctr += 4 # 00 00 00 20 
+                _ctr += 4 # variable in battle+tutorial files
+                _a = int.from_bytes(by[_ctr:_ctr+4], byteorder="little")
                 _ctr += 4 # xx xx 00 20 
                 _x = int.from_bytes(by[_ctr:_ctr+2], byteorder="little")
                 _ctr += 4 # yy yy 00 20 
                 _y = int.from_bytes(by[_ctr:_ctr+2], byteorder="little")
-                _ctr += 4 # 00 00 00 20 
-                _ctr += 4 # 35 00 00 20 
-                _ctr += 4 # 00 00 00 20 
-                _ctr += 4 # 00 00 00 20 
+                _ctr += 4 # always 0 0 0 20 
+                #_b = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
+                assert(by[_ctr:_ctr+4] == b'\x00\x00\x00 ')
+                _ctr += 4 # 35 00 00 20 sometimes 0x36...
+                #if (hex(by[_ctr]) != '0x35'):
+                #assert(by[_ctr+3] == b' ')
+                #    print("ERROR: unexpected value at",_ctr,hex(by[_ctr]))
+                _u = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
+                _ctr += 4 # variable in battle+tutorial files
+                #if(by[_ctr:_ctr+4] != b'\x00\x00\x00 '):
+                #    print("ERROR C", by[_ctr:_ctr+4])
+                _c = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
+                _ctr += 4 # variable in battle+tutorial files
+                #if(by[_ctr:_ctr+4] != b'\x00\x00\x00 '):
+                #    print("ERROR D", by[_ctr:_ctr+4])
+                _d = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
                 _ctr += 4 # ww ww 00 20 
                 _w = int.from_bytes(by[_ctr:_ctr+2], byteorder="little")
                 _ctr += 4 # hh hh 00 20 
                 _h = int.from_bytes(by[_ctr:_ctr+2], byteorder="little")
-                _e.desc = "Img params: X "+str(_x)+" Y "+str(_y)+" W "+str(_w)+" H "+str(_h)
+                _e.desc = "Img params: X "+str(_x)+" Y "+str(_y)+" W "+str(_w)+" H "+str(_h) + " U " + hex(_u) + " A " + hex(_a) + " C " + hex(_c) + " D " + hex(_d) 
                 self.scene_elements.append(_e)
             #
             elif(nxt == bWAIT_CLICK):
                 _e = YBCElement(by[_ctr:_ctr+8])
                 _e.desc = "[Wait for click?]"
                 _ctr += 4 # 58 02 00 20
+                assert(by[_ctr:_ctr+4] == b'\x58\x02\x00 ')
+                #if(by[_ctr:_ctr+2] != b'\x58\x02'):
+                #    print("ERROR!!!!zzz")
                 self.scene_elements.append(_e)
             #
             elif (nxt == bERASE_TITLE): 
@@ -150,14 +176,17 @@ class YBCFile():
             elif(nxt==bMS_WAIT):
                 _e = YBCElement(by[_ctr:_ctr+8])
                 _ctr += 4 # xx 00 00 20
-                _ms = by[_ctr] * 20
+                _ms = int.from_bytes(by[_ctr:_ctr+1], byteorder="little") * 20
                 _e.desc = "[ms wait:"+str(_ms)+"]"
                 self.scene_elements.append(_e)
             #
             elif(nxt==bUNKNOWN_1):
                 _e = YBCElement(by[_ctr:_ctr+8])
-                _e.desc = "[Unknown code 1]" #?unknown
+                _e.desc = "[Unknown code 1: " #?unknown
+                _e.desc += hex(int.from_bytes(by[_ctr+4:_ctr+8], byteorder="little")) + "]"
                 _ctr += 4 # 01 00 00 20 
+                #assert(by[_ctr:_ctr+4]==b'\x01\x00\x00 ')
+                #print(by[_ctr:_ctr+4])
                 self.scene_elements.append(_e)
             #
             elif(nxt==bPLAY_BGM):
@@ -169,18 +198,13 @@ class YBCFile():
             #
             elif(nxt==bNAMELESS_MSGBOX):
                 _e = YBCElement(by[_ctr:_ctr+16])
-                _ctr += 4 
+                _ctr += 4 # ps 00 00 20 
                 _pos = by[_ctr]
-                if(_pos == 1):
-                    _pos = "center"
-                elif(_pos == 2):
-                    _pos = "bottom-left"
-                elif(_pos == 3):
-                    _pos = "bottom-right"
-                elif(_pos == 4):
-                    _pos = "bottom center"
-                _e.desc = "[Open nameless msg box at"+str(_pos)+"]"
+                _e.desc = "[Open nameless msg box at %"+str(_pos)+"]"
                 _ctr += 4 # ff ff ff 2f 
+                #if(by[_ctr:_ctr+8] != b'\xff\xff\xff\x2f\xff\xff\xff\x2f'):
+                #    print("ERROR: bad stuff!!", by[_ctr:_ctr+8])
+                _e.desc += "(" + hex(int.from_bytes(by[_ctr:_ctr+8], byteorder="little")) + ")"
                 _ctr += 4 # ff ff ff 2f 
                 self.scene_elements.append(_e)
             #
@@ -194,7 +218,7 @@ class YBCFile():
                 _e = YBCElement(by[_ctr:_ctr+6])
                 _ctr += 4
                 _i = by[_ctr] + (by[_ctr+1]*256)
-                _e.desc = "[Show msg #"+str(_i)+"]"
+                _e.desc = "TXT#"+str(_i)
                 _ctr -= 2
                 self.scene_elements.append(_e)
             #
@@ -215,13 +239,15 @@ class YBCFile():
             #
             elif(nxt==bSHOW_BGIMAGE):
                 _e = YBCElement(by[_ctr:_ctr+16])
-                _e.desc = "[Show BG image (wip:"
+                _e.desc = "[Show BG image "
                 # 01でフェードせずにいきなり表示、02でフェードインしながら表示、03でフェードアウト、04で白背景からフェードイン、05で白背景へフェードアウト。
                 _ctr += 4 # 00 00 00 20 
+                assert(by[_ctr:_ctr+4] == b'\x00\x00\x00 ')
                 _ctr += 4 # xx 00 00 20 
                 _img = by[_ctr] #img number 
                 _ctr += 4  # yy 00 00 20 switch
                 _sw = by[_ctr]
+                _e.desc += "N("+str(_img)+") " + "S(" + str(_sw) + ")]"
                 self.scene_elements.append(_e)
             #
             elif(nxt==bERASE_NAMELESSBOX):
@@ -275,7 +301,7 @@ class YBCFile():
                 _chr = by[_ctr]
                 _ctr += 4 # to this expr 
                 _exp = by[_ctr]
-                _e.desc = "[Change box "+str(_old)+" to "+str(_new)+" and change chr "+str(_chr)+" expression to "+str(_exp)+"]"
+                _e.desc = "[Change box "+str(_old)+" to "+str(_new)+" and change chr "+str(_chr)+" expression "+str(_exp)+"]"
                 self.scene_elements.append(_e)
             #
             elif(nxt==bSWAP_CHARACTER):
@@ -286,7 +312,7 @@ class YBCFile():
                 _chr = by[_ctr]
                 _ctr += 4 # zz 00 00 20
                 _exp = by[_ctr]
-                _e.desc = "[Change id "+str(_id)+" to character "+str(_chr)+" with expr "+str(_expr)+"]"
+                _e.desc = "[Change id "+str(_id)+" to character "+str(_chr)+" with expr "+str(_exp)+"]"
                 self.scene_elements.append(_e)
             #
             elif(nxt==bUNKNOWN_2):
@@ -307,13 +333,17 @@ class YBCFile():
                 self.scene_elements.append(_e)
             elif(nxt==bSCRIPT_CLEANUP):
                 _e = YBCElement(by[_ctr:_ctr+12])
+                #assert(by[_ctr+4:_ctr+12] == b'\x0c\x00\x08\x00\x3c\x00\x00\x20')
+                _a = int.from_bytes(by[_ctr+4:_ctr+8],byteorder="little")
+                _b = int.from_bytes(by[_ctr+8:_ctr+12],byteorder="little")
+                _e.desc = "[Script cleanup...] A(" + hex(_a) + ") B(" + hex(_b) + ")"
                 _ctr += 8 # should have 1x wait and 1x 3c 00 00 20 
-                _e.desc = "[Script cleanup...]"
                 self.scene_elements.append(_e)
             elif(nxt==bNEXT_CHAPTER):
                 _e = YBCElement(by[_ctr:_ctr+8])
                 _ctr += 4 
                 _nx = by[_ctr]
+                assert (by[_ctr+1:_ctr+4] == b'\x00\x00\x00')
                 _e.desc = "[Load chapter: "+str(_nx)+"]"
                 self.scene_elements.append(_e)
             elif(nxt==bEND_SCENE):
@@ -324,7 +354,7 @@ class YBCFile():
                 break 
             else:
                 _e = YBCElement(by[_ctr:_ctr+4])
-                _e.desc = "Error: Unknown code:"+ str(by[_ctr:_ctr+4])
+                _e.desc = "Error: Unknown code:"+ hex(int.from_bytes(by[_ctr:_ctr+4], byteorder="little"))
                 self.scene_elements.append(_e)
             _ctr += 4
             _script_ct += 1
@@ -387,8 +417,9 @@ class YBCFile():
             print("Warning:",_ctr,"does not equal",(_ofs + (4 * _var))+4)
         
         # fix last line's length 
-        self.lines[len(self.lines)-1].len = len(self.lines[len(self.lines)-1].bytes)
-        self.lines[len(self.lines)-1].bytes = self.lines[len(self.lines)-1].bytes[:self.lines[len(self.lines)-1].len]
+        if(len(self.lines) > 0):
+            self.lines[len(self.lines)-1].len = len(self.lines[len(self.lines)-1].bytes)
+            self.lines[len(self.lines)-1].bytes = self.lines[len(self.lines)-1].bytes[:self.lines[len(self.lines)-1].len]
         
         # constructor done!
         self.repopulate()
@@ -440,6 +471,182 @@ class YBCFile():
             
         return csv
     ###
+
+    def add_event(self, e_txt):
+        _e = YBCElement(bytes([0,0,0,0]))
+        if(e_txt.find("[Change Screen:") == 0):
+            _e.cmd = bCHANGE_SCREEN 
+            _e.vars = re.findall(r"\([0-9]*\)", e_txt)[0]
+            _ty = int(re.findall(r'\d+', _e.vars)[0])
+            _e.vars = bytes([_ty, 0, 0, 0x20])
+        #    print(e_txt)
+        #    print(_e.cmd,_e.vars)
+        elif(e_txt.find("[Show image")==0):
+            _e.cmd = bSHOW_IMAGE
+            _n = int(re.findall(r"\&([0-9]*)\]", e_txt)[0])
+            #_n = int(re.findall(r'\d+', e_txt)[0])
+            _e.vars = bytes([_n & 0xff, math.floor(_n/256)&0xff, 0, 0])
+        #    print(e_txt)
+        #    print(_e.cmd, _e.vars)
+        elif(e_txt.find("Img params:")==0):
+            _e.cmd = bXYWH
+            #_vs = re.findall(r"\d+", e_txt)
+            _x = int(re.findall(r"X ([0-9]*)", e_txt)[0])
+            _y = int(re.findall(r"Y ([0-9]*)", e_txt)[0])
+            _w = int(re.findall(r"W ([0-9]*)", e_txt)[0])
+            _h = int(re.findall(r"H ([0-9]*)", e_txt)[0])
+            #_x = (int(_vs[0]) & 0xff, math.floor(int(_vs[0]) /256))
+            #_y = (int(_vs[1]) & 0xff, math.floor(int(_vs[1]) /256))
+            #_w = (int(_vs[2]) & 0xff, math.floor(int(_vs[2]) /256))
+            #print(_w)
+            #_h = (int(_vs[3], 16) & 0xff, math.floor(int(_vs[3], 16) /256) & 0xff)
+            # WARNING: A sometimes ends with 00 not 20!
+            _u = int(re.findall(r"U 0x([0-9A-Fa-f]*)", e_txt)[0], 16)
+            _a = int(re.findall(r"A 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[5], 16) & 0xff, math.floor(int(_vs[5], 16) /256) & 0xff, math.floor(int(_vs[5],16)/(0x10000))&0xff, math.floor(int(_vs[5],16)/(0x1000000))&0xff)
+            _c = int(re.findall(r"C 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[6], 16) & 0xff, math.floor(int(_vs[6], 16) /256) & 0xff)
+            _d = int(re.findall(r"D 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[7], 16) & 0xff, math.floor(int(_vs[7], 16) /256) & 0xff)
+            _e.vars = bytes([_a & 0xff, math.floor(_a / 0x100) & 0xff, math.floor(_a / 0x10000) & 0xff, math.floor(_a / 0x1000000) & 0xff,
+                _x & 0xff, math.floor(_x / 0x100) & 0xff, 0, 0x20,
+                _y & 0xff, math.floor(_y / 0x100) & 0xff, 0, 0x20,
+                0, 0, 0, 0x20, # hmm always the same.
+                _u & 0xff, math.floor(_u/256)&0xff, 0, 0x20, 
+                _c&0xff, math.floor(_c/256)&0xff, 0, 0x20,
+                _d&0xff, math.floor(_d/256)&0xff, 0, 0x20,
+                _w & 0xff, math.floor(_w / 0x100) & 0xff, 0, 0x20,
+                _h & 0xff, math.floor(_h / 0x100) & 0xff, 0, 0x20])
+            #print(_e.vars)
+        elif(e_txt.find("[Wait for click?]")==0):
+            _e.cmd = bWAIT_CLICK
+            _e.vars = bytes([0x58, 0x02, 0x00, 0x20]) # always the same
+        elif(e_txt.find("[Erase title]")==0):
+            _e.cmd = bERASE_TITLE
+        elif(e_txt.find("[ms wait:")==0):
+            _e.cmd = bMS_WAIT
+            _vs = int(int(re.findall(r"\d+", e_txt)[0]) / 20)
+            _e.vars = bytes([_vs & 0xff, math.floor(_vs/256), 0, 0x20])
+        elif(e_txt.find("[Unknown code 1:")==0):
+            _e.cmd = bUNKNOWN_1
+            _vs = int(re.findall(r"0x([0-9a-f]*)", e_txt)[0], 16)
+            _e.vars = bytes([_vs & 0xff, math.floor(_vs/256) & 0xff, math.floor(_vs/(0x10000))&0xff, math.floor(_vs/(0x1000000))&0xff])
+        elif(e_txt.find("[Play BGM")==0):
+            _e.cmd = bPLAY_BGM
+            _b = int(re.findall(r"#([0-9]*)", e_txt)[0])
+            _e.vars = bytes([_b, 0, 0, 0x20])
+        elif(e_txt.find("[Open nameless msg box at")==0):
+            _e.cmd = bNAMELESS_MSGBOX
+            _pos = int(re.findall(r"%([0-9]*)\]", e_txt)[0])
+            _v1 = math.floor(int(re.findall(r"\(0x([0-9a-f]*)\)", e_txt)[0], 16) / 0x100000000)
+            _v2 = int(re.findall(r"\(0x([0-9a-f]*)\)", e_txt)[0], 16) & 0xffffffff
+            _e.vars = bytes([_pos, 0, 0, 0x20, 
+                _v2 & 0xff, math.floor(_v2/256) & 0xff, math.floor(_v2/0x10000)&0xff, math.floor(_v2/0x1000000)&0xff,
+                _v1 & 0xff, math.floor(_v1/256) & 0xff, math.floor(_v1/0x10000)&0xff, math.floor(_v1/0x1000000)&0xff])
+        elif(e_txt.find("[Make active:")==0):
+            _e.cmd = bMAKE_ACTIVE
+            n = int(re.findall(r"\:([0-9]*)\]", e_txt)[0])
+            _e.vars = bytes([n, 0, 0, 0x20])
+        elif(e_txt.find("[Show next arrow")==0):
+            _e.cmd = bSHOW_NEXTARROW
+        elif(e_txt.find("[Wait for msg click")==0):
+            _e.cmd = bWAIT_MSGCLICK
+        elif(e_txt.find("[Erase text")==0):
+            _e.cmd = bERASE_TEXT
+        elif(e_txt.find("[Show BG image")==0):
+            _e.cmd = bSHOW_BGIMAGE
+            vs = (int(re.findall(r"N\(([0-9]*)\)", e_txt)[0]), int(re.findall(r"S\(([0-9]*)\)", e_txt)[0]))
+            _e.vars = bytes([0, 0, 0, 0x20, 
+                vs[0] & 0xff, math.floor(vs[0]/256)&0xff, 0, 0x20, 
+                vs[1] & 0xff, math.floor(vs[1]/256)&0xff, 0, 0x20])
+        elif(e_txt.find("[Erase nameless box")==0):
+            _e.cmd = bERASE_NAMELESSBOX
+            _a = int(re.findall(r"at([0-9]*)", e_txt)[0])
+            _e.vars = bytes([_a, 0, 0, 0x20])
+        elif(e_txt.find("[Show char")==0):
+            _e.cmd = bMSGBOX
+            _id = int(re.findall(r"char([0-9]*)with", e_txt)[0])
+            _exp = int(re.findall(r"expr([0-9]*)at", e_txt)[0])
+            _pos = int(re.findall(r"pos([0-9]*)on", e_txt)[0])
+            _ms = math.floor(int(re.findall(r"delay([0-9]*)\]", e_txt)[0])/20)
+            _e.vars = bytes([_pos, 0, 0, 0x20, 
+                _id, 0, 0, 0x20,
+                _exp, 0, 0, 0x20, 
+                _ms, 0, 0, 0x20 ])
+            #print(_e.vars)
+        elif(e_txt.find("[Play voice")==0):
+            _e.cmd = bPLAY_VOICE
+            _n = int(re.findall(r"voice ([0-9]*) ", e_txt)[0])
+            _d = int(re.findall(r"folder ([0-9]*)", e_txt)[0])
+            _e.vars = bytes([_d, 0, _n, 0])
+        elif(e_txt.find("[Change char")==0):
+            _e.cmd = bCHANGE_EXPR
+            _c = int(re.findall(r"char([0-9]*)exp", e_txt)[0])
+            _m = int(re.findall(r"to([0-9]*)\]", e_txt)[0])
+            _e.vars = bytes([_c, 0, 0, 0x20, _m, 0, 0, 0x20 ])
+        elif(e_txt.find("[Change box")==0):
+            _e.cmd = bSWAP_MSGBOX
+            _ob = int(re.findall(r"box ([0-9]*)", e_txt)[0])
+            _nb = int(re.findall(r"to ([0-9]*)", e_txt)[0])
+            _ch = int(re.findall(r"chr ([0-9]*)", e_txt)[0])
+            _ex = int(re.findall(r"expression ([0-9]*)", e_txt)[0])
+            _e.vars = bytes([_ob, 0, 0, 0x20,
+                _nb, 0, 0, 0x20,
+                _ch, 0, 0, 0x20,
+                _ex, 0, 0, 0x20])
+        elif(e_txt.find("[Change id ")==0):
+            _e.cmd = bSWAP_CHARACTER
+            _id = int(re.findall(r"id ([0-9]*)", e_txt)[0])
+            _ch = int(re.findall(r"character ([0-9]*)", e_txt)[0])
+            _ex = int(re.findall(r"expr ([0-9]*)", e_txt)[0])
+            _e.vars = bytes([_id, 0, 0, 0x20, 
+                _ch, 0, 0, 0x20,
+                _ex, 0, 0, 0x20])
+        elif(e_txt.find("[Unknown code 2]")==0):
+            _e.cmd = bUNKNOWN_2
+        elif(e_txt.find("[Change font size")==0):
+            _e.cmd = bCHANGE_FONT
+            _x = int(re.findall(r"([0-9]*)%x", e_txt)[0]) # 8%x and16%y    
+            _y = int(re.findall(r"and([0-9]*)%y", e_txt)[0])
+            _e.vars = bytes([_x, 0, 0, 0x20, _y, 0, 0, 0x20])
+        elif(e_txt.find("[Reset font size")==0):
+            _e.cmd = bRESET_FONT
+        elif(e_txt.find("[Script cleanup")==0):
+            _e.cmd = bSCRIPT_CLEANUP
+            _a = int(re.findall(r"A\((0x[0-9a-fA-F]*)\)", e_txt)[0], 16)
+            _b = int(re.findall(r"B\((0x[0-9a-fA-F]*)\)", e_txt)[0], 16)
+            _e.vars = bytes([
+                _a & 0xff, math.floor(_a/256) & 0xff, math.floor(_a/0x10000)&0xff, math.floor(_a/0x1000000)&0xff,
+                _b & 0xff, math.floor(_b/256) & 0xff, math.floor(_b/0x10000)&0xff, math.floor(_b/0x1000000)&0xff
+            ])
+        elif(e_txt.find("[Load chapter")==0):
+            _e.cmd = bNEXT_CHAPTER 
+            _n = int(re.findall(r": ([0-9]*)\]", e_txt)[0])# surprisingly, only 1 byte 
+            _e.vars = bytes([_n, 0, 0, 0])
+        elif(e_txt.find("[END SCENE]") == 0):
+            _e.cmd = bEND_SCENE
+        elif(e_txt.find("Error: Unknown code")==0):
+            _e.cmd = int(re.findall(r"code:0x([0-9a-fA-F]*)", e_txt)[0],16)
+            _e.cmd = bytes([ _e.cmd & 0xff, math.floor(_e.cmd/0x100)&0xff,
+                math.floor(_e.cmd/0x10000)&0xff, math.floor(_e.cmd/0x1000000)&0xff ])
+        else:
+            print("ERROR: UNRECOGNIZED SCRIPT CODE ")
+            
+        self.scene_elements.append(_e)
+    ###    
+    def add_dialogue(self, e_txt, index):
+        _e = YBCElement(bytes([0,0,0,0]))
+        _e.cmd = bSHOW_MESSAGE
+        if(len(self.lines) < (index+1)):
+            while(len(self.lines) < (index+1)):
+                self.lines.append(DialogueLine(b''))
+        if(len(self.lines)-1 != index):
+            print("ERROR: out of order", len(self.lines), index)
+        _dl = DialogueLine(b'')
+        _e.vars = bytes([index & 0xff, math.floor(index/0x100)&0xff])
+        _dl.text = e_txt
+        _dl.bytes = _dl.text.encode("sjis")+b'\x00\x00' # re-encode
+        _dl.len = len(_dl.bytes)
+        self.scene_elements.append(_e)
+        self.lines[index] = _dl
+    ##
 ###
 
 
