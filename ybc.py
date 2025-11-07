@@ -140,17 +140,12 @@ class YBCFile():
                 #_b = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
                 assert(by[_ctr:_ctr+4] == b'\x00\x00\x00 ')
                 _ctr += 4 # 35 00 00 20 sometimes 0x36...
-                #if (hex(by[_ctr]) != '0x35'):
                 #assert(by[_ctr+3] == b' ')
                 #    print("ERROR: unexpected value at",_ctr,hex(by[_ctr]))
                 _u = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
                 _ctr += 4 # variable in battle+tutorial files
-                #if(by[_ctr:_ctr+4] != b'\x00\x00\x00 '):
-                #    print("ERROR C", by[_ctr:_ctr+4])
                 _c = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
                 _ctr += 4 # variable in battle+tutorial files
-                #if(by[_ctr:_ctr+4] != b'\x00\x00\x00 '):
-                #    print("ERROR D", by[_ctr:_ctr+4])
                 _d = int.from_bytes(by[_ctr:_ctr+3], byteorder="little")
                 _ctr += 4 # ww ww 00 20 
                 _w = int.from_bytes(by[_ctr:_ctr+2], byteorder="little")
@@ -452,7 +447,7 @@ class YBCFile():
             outby += l.bytes
 
         assert(outby == self.old_bytes)
-
+        # new_bytes is only populated if it matches.
         self.new_bytes = outby
     ###
     def dump_script(self):
@@ -479,32 +474,20 @@ class YBCFile():
             _e.vars = re.findall(r"\([0-9]*\)", e_txt)[0]
             _ty = int(re.findall(r'\d+', _e.vars)[0])
             _e.vars = bytes([_ty, 0, 0, 0x20])
-        #    print(e_txt)
-        #    print(_e.cmd,_e.vars)
         elif(e_txt.find("[Show image")==0):
             _e.cmd = bSHOW_IMAGE
             _n = int(re.findall(r"\&([0-9]*)\]", e_txt)[0])
-            #_n = int(re.findall(r'\d+', e_txt)[0])
             _e.vars = bytes([_n & 0xff, math.floor(_n/256)&0xff, 0, 0])
-        #    print(e_txt)
-        #    print(_e.cmd, _e.vars)
         elif(e_txt.find("Img params:")==0):
             _e.cmd = bXYWH
-            #_vs = re.findall(r"\d+", e_txt)
             _x = int(re.findall(r"X ([0-9]*)", e_txt)[0])
             _y = int(re.findall(r"Y ([0-9]*)", e_txt)[0])
             _w = int(re.findall(r"W ([0-9]*)", e_txt)[0])
             _h = int(re.findall(r"H ([0-9]*)", e_txt)[0])
-            #_x = (int(_vs[0]) & 0xff, math.floor(int(_vs[0]) /256))
-            #_y = (int(_vs[1]) & 0xff, math.floor(int(_vs[1]) /256))
-            #_w = (int(_vs[2]) & 0xff, math.floor(int(_vs[2]) /256))
-            #print(_w)
-            #_h = (int(_vs[3], 16) & 0xff, math.floor(int(_vs[3], 16) /256) & 0xff)
-            # WARNING: A sometimes ends with 00 not 20!
             _u = int(re.findall(r"U 0x([0-9A-Fa-f]*)", e_txt)[0], 16)
-            _a = int(re.findall(r"A 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[5], 16) & 0xff, math.floor(int(_vs[5], 16) /256) & 0xff, math.floor(int(_vs[5],16)/(0x10000))&0xff, math.floor(int(_vs[5],16)/(0x1000000))&0xff)
-            _c = int(re.findall(r"C 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[6], 16) & 0xff, math.floor(int(_vs[6], 16) /256) & 0xff)
-            _d = int(re.findall(r"D 0x([0-9A-Fa-f]*)", e_txt)[0], 16)#(int(_vs[7], 16) & 0xff, math.floor(int(_vs[7], 16) /256) & 0xff)
+            _a = int(re.findall(r"A 0x([0-9A-Fa-f]*)", e_txt)[0], 16)
+            _c = int(re.findall(r"C 0x([0-9A-Fa-f]*)", e_txt)[0], 16)
+            _d = int(re.findall(r"D 0x([0-9A-Fa-f]*)", e_txt)[0], 16)
             _e.vars = bytes([_a & 0xff, math.floor(_a / 0x100) & 0xff, math.floor(_a / 0x10000) & 0xff, math.floor(_a / 0x1000000) & 0xff,
                 _x & 0xff, math.floor(_x / 0x100) & 0xff, 0, 0x20,
                 _y & 0xff, math.floor(_y / 0x100) & 0xff, 0, 0x20,

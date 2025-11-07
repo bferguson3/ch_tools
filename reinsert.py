@@ -56,8 +56,8 @@ print(hex(len(event_bytes)))
 # from the original file, get the header, 8 bytes
 ybc.new_bytes = orig_ybc[:8]
 
-# wait - some files dont have these. 
-#. lets get the actual size of the str block. 
+# wait - some files dont have strs. 
+#  lets get the actual size of the str block. 
 ptr_a = int.from_bytes(orig_ybc[8:12],byteorder="little")
 ptr_b = int.from_bytes(orig_ybc[12:16],byteorder="little")
 str_block_sz = ptr_b - ptr_a 
@@ -73,6 +73,7 @@ if orig_ybc[16:20] == orig_ybc[12:16]:
     print("double header! what does it mean?")
 else:
     print("header not 20 bytes!!! ERROR")
+# then at 0x14 starts event table bytes 
 ybc.new_bytes += event_bytes 
 
 # now append the two strings from orig
@@ -82,15 +83,12 @@ while(str_block_sz > 0):
     ybc.new_bytes += _ns
     str_block_sz -= 48
     str_loc += 48
-    #if(str_block_sz > 48):
-    #    str_b = orig_ybc[str_loc+48 : str_loc+48+48]#.decode("ascii")
-    #    ybc.new_bytes += str_b 
 
 ybc.new_bytes += bytes([ (diag_ct & 0xff), math.floor(diag_ct/256) & 0xff ])
 ybc.new_bytes += bytes([0, 0])
 
-# first pointer is 0410, or dialogue_loc from hdr + (4*num dialogue entries)
-# scnd num is 0x10 * size in fw or 8 * byte size 
+# first pointer is dialogue_loc from hdr + (4*num dialogue entries)
+# scnd num is 0x20 + 0x20 * size in fw OR 16 * byte size 
 tot_dist = (4 * diag_ct) + 4
 for d in ybc.lines: 
     ybc.new_bytes += bytes([tot_dist & 0xff, math.floor(tot_dist/256)&0xff])
@@ -100,8 +98,9 @@ for d in ybc.lines:
 
 for d in ybc.lines: 
     ybc.new_bytes += d.bytes 
-# then at 0x10 starts event table bytes 
+
 f = open(os.path.basename(sys.argv[2]).split(".")[0] + "e.ybc", "wb")
 f.write(ybc.new_bytes)
 f.close()
+
 print(diag_ct,"lines of dialogue inserted.")
