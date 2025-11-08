@@ -7,4 +7,5 @@ Chapter003.ybc
 AdvDatDump/
 .vscode
 Tactics_Ystext/
-SCRIPT/
+SCRIPT/*.ybc
+SCRIPT 

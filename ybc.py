@@ -513,7 +513,7 @@ class YBCFile():
             for l in self.lines:
                 if(bytes(l.text[len(l.text)-2:],encoding="sjis")==b'\x00\x00'):
                     l.text = l.text[:-2]
-                csv += "txt,,"+l.text + "\n"
+                csv += "txt,"+str(_li)+","+l.text + "\n"
                 _ex = 0x10 * len(l.bytes)
                 if(_ex != l.fin):
                     print("Warning: fin size mismatch", _ex, l.fin)
