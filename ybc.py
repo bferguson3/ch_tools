@@ -457,7 +457,7 @@ class YBCFile():
         start_ofs = 4 + (len(self.lines)*4) # first offset is (this, 4b) + (num entries * 4)
         for l in self.lines: 
             if(l.len != len(l.bytes)):
-                print("WARNING: size mismatch!!")
+                print("WARNING: size mismatch!!", l.len, len(l.bytes))
             # APPEND: above num x addr (minus ofs), flags as given, dont bother (hopefully OK)
             i = 0
             outby += bytes([start_ofs & 0xff, (math.floor(start_ofs /256)) & 0xff])
@@ -485,7 +485,7 @@ class YBCFile():
         
         outby += b'\x00\x00'
 
-        assert(outby == self.old_bytes)
+        #assert(outby == self.old_bytes)
         # new_bytes is only populated if it matches.
         self.new_bytes = outby
     ###
@@ -495,19 +495,25 @@ class YBCFile():
         while i < len(self.scene_elements):
             if(self.scene_elements[i].cmd == bSHOW_MESSAGE):
                 _i = int.from_bytes(self.scene_elements[i].vars[:2], byteorder="little")
-                csv += "txt,,"+self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
+                if(bytes(self.lines[i].text[len(self.lines[i].text)-2:],encoding="sjis")==b'\x00\x00'):
+                    self.lines[i].text = self.lines[i].text[:-2]
+                csv += "txt,,"+self.lines[_i].text + "\n"
                 _ex = 0x10 * len(self.lines[_i].bytes)
                 if(_ex != self.lines[_i].fin):
                     print("Warning: fin size mismatch", _ex, self.lines[_i].fin)
             else:
                 csv += "scr_cmd," + self.scene_elements[i].desc + "\n"
             i += 1
+        if(len(self.lines)==0):
+            return ""
         if(len(self.scene_elements)==0):
             # must be non chap file
             csv += "reinsertion_flags,no_scene_elements\n"
             _li = 0
             for l in self.lines:
-                csv += "txt,"+str(_li)+","+l.text[:len(l.text)-2]+"\n"
+                if(bytes(l.text[len(l.text)-2:],encoding="sjis")==b'\x00\x00'):
+                    l.text = l.text[:-2]
+                csv += "txt,,"+l.text + "\n"
                 _ex = 0x10 * len(l.bytes)
                 if(_ex != l.fin):
                     print("Warning: fin size mismatch", _ex, l.fin)

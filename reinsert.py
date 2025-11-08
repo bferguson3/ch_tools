@@ -2,10 +2,10 @@ import os, sys, math
 from ybc import YBCFile
 
 # verify csv ybc extension 
-if(os.path.basename(sys.argv[1]).split(".")[1] != "csv"):
+if(os.path.splitext(sys.argv[1])[1] != ".csv"):
     print("Not a .csv file!")
     os.exit()
-if(os.path.basename(sys.argv[2]).split(".")[1] != "ybc"):
+if(os.path.splitext(sys.argv[2])[1] != ".ybc"):
     print("Not a .ybc file!")
     sys.exit()
 
