@@ -89,12 +89,12 @@ class YBCFile():
         #
 
         if(by[16:20] != self.text_path_loc):
-            print("error: text path loc does not match itself")
-            return
+            print("warning: text path loc does not match itself. probably not a Chapter file")
+            #return
         # read 4 bytes at a time to get the next script code 
         _ctr = 20
         _script_ct = 0
-        while(_ctr < len(by)):
+        while(_ctr < len(self.text_path_loc)):
             nxt = by[_ctr:_ctr+4]
             #
             if(nxt == bCHANGE_SCREEN):
@@ -361,7 +361,7 @@ class YBCFile():
         
         ###
         if(_ctr != int.from_bytes(self.file_path_loc, byteorder="little")):
-            print("Error in script organization!")
+            print("Warning: non-linear script organization!")
         _tit = by[_ctr:_ctr+48]
         _ctr += 48 # next file loc 
         _nxt = by[_ctr:_ctr+48]
@@ -392,13 +392,22 @@ class YBCFile():
             _adr = int.from_bytes(by[_ctr:_ctr+2], byteorder="little") # start pos 
             _fin = int.from_bytes(by[_ctr+2:_ctr+4], byteorder="little") # byte length * 16
             # BUG: 
+            _initialpos = _adr+_ofs 
+            _flen = 0
+            while by[_initialpos+_flen:_initialpos+_flen+2] != b'\x00\x00':
+                _flen += 1
+                if(_flen > 10000):
+                    break 
             _len = int.from_bytes(by[_ctr+4:_ctr+6], byteorder="little") - _adr # calculate from next pointer! see wiki 
+            if(_flen != (_len - 2)):
+                print("length mismatch, patching:",_flen, _len, i)
+                _len = _flen
             # make dialogue object 
             _d = DialogueLine(by[_adr+_ofs:_adr+_ofs+_len])
             if _d.bytes[len(_d.bytes)-2:] != b'\x00\x00': # just in case...
-                print("Error!! line", i, "does not end in double-null.")
+                print("Warning: line", i, "does not end in double-null.")
             _d.addr = _adr 
-            _d.len = _len 
+            _d.len = _len
             _d.fin = _fin
             try:
                 _d.text = _d.bytes.decode("sjis")
@@ -426,9 +435,20 @@ class YBCFile():
     def repopulate(self):
         # populate out byte array 
         outby = self.get_header()
+        if(outby[16:20] != self.old_bytes[16:20]):
+            print("Warning: Header mismatch!! Probably a Ystext file, fixing...", end=" ")
+            outby = outby[:16] + self.old_bytes[16:20]
+            if (outby != self.old_bytes[:20]):
+                print("ERROR: Shit! Still wrong. Better fix it!")
+            else:
+                print("OK.")
+
+        print(len(self.scene_elements))
         for e in self.scene_elements:
             outby += e.cmd + e.vars # cmd + vars = full scene element 
+        
         outby += bytes(self.remainder_bytes)
+        print(len(self.remainder_bytes), "str bytes appended...")
         # now append the data header and the script data... 
         print(len(self.lines),"lines found.")
         # APPEND: 2b num of ptr entries  and 2 null 
@@ -443,8 +463,27 @@ class YBCFile():
             outby += bytes([start_ofs & 0xff, (math.floor(start_ofs /256)) & 0xff])
             outby += bytes([l.fin & 0xff, (math.floor(l.fin /256)) & 0xff])
             start_ofs += l.len
+        _c = 0
         for l in self.lines:
+            _c += 1
+            #print(l.bytes.decode("sjis"))
+            #print(hex(len(outby)))
             outby += l.bytes
+            #print(_c, len(l.bytes))
+        #print(len(outby))
+        #if(outby < self.old_bytes):
+        #    print("Rebuild mismatch. Let's do a compare...")
+        #    _l = 0 
+        #    while _l < len(outby):
+        #        assert(outby[_l] == self.old_bytes[_l])
+        #        _l += 1
+        #    print("Compare OK. Appending the extra bytes!")
+        #    outby += self.old_bytes[_l:]
+        #elif(outby > self.old_bytes):
+        #    print("new bytes is too big?? Truncating.")
+        #    outby = outby[:len(self.old_bytes)]
+        
+        outby += b'\x00\x00'
 
         assert(outby == self.old_bytes)
         # new_bytes is only populated if it matches.
@@ -459,14 +498,22 @@ class YBCFile():
                 csv += "txt,,"+self.lines[_i].text[:len(self.lines[_i].text)-2] + "\n"
                 _ex = 0x10 * len(self.lines[_i].bytes)
                 if(_ex != self.lines[_i].fin):
-                    print("ERROR: fin size mismatch!")
+                    print("Warning: fin size mismatch", _ex, self.lines[_i].fin)
             else:
                 csv += "scr_cmd," + self.scene_elements[i].desc + "\n"
             i += 1
-            
+        if(len(self.scene_elements)==0):
+            # must be non chap file
+            csv += "reinsertion_flags,no_scene_elements\n"
+            _li = 0
+            for l in self.lines:
+                csv += "txt,"+str(_li)+","+l.text[:len(l.text)-2]+"\n"
+                _ex = 0x10 * len(l.bytes)
+                if(_ex != l.fin):
+                    print("Warning: fin size mismatch", _ex, l.fin)
+                _li += 1
         return csv
-    ###
-
+    
     def add_event(self, e_txt):
         _e = YBCElement(bytes([0,0,0,0]))
         if(e_txt.find("[Change Screen:") == 0):

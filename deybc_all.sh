@@ -1,4 +1,4 @@
-dir="./DAT"
+dir="./Tactics_Ystext/Ystext"
 if [ ! -d "$dir" ]; then 
     echo "DAT dir not found"
     exit 1 

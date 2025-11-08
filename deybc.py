@@ -13,6 +13,6 @@ f.write(scr)
 f.close()
 
 # write new file 
-#f = open(os.path.basename(sys.argv[1]).split(".")[0] + "_e.ybc", "wb")
-#f.write(ybc.new_bytes)
-#f.close()
+f = open(os.path.basename(sys.argv[1]).split(".")[0] + "_e.ybc", "wb")
+f.write(ybc.new_bytes)
+f.close()
