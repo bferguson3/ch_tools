@@ -448,7 +448,7 @@ class YBCFile():
             outby += e.cmd + e.vars # cmd + vars = full scene element 
         
         outby += bytes(self.remainder_bytes)
-        print(len(self.remainder_bytes), "str bytes appended...")
+        print(len(self.remainder_bytes), "remainder str bytes appended...")
         # now append the data header and the script data... 
         print(len(self.lines),"lines found.")
         # APPEND: 2b num of ptr entries  and 2 null 
@@ -457,7 +457,7 @@ class YBCFile():
         start_ofs = 4 + (len(self.lines)*4) # first offset is (this, 4b) + (num entries * 4)
         for l in self.lines: 
             if(l.len != len(l.bytes)):
-                print("WARNING: size mismatch!!", l.len, len(l.bytes))
+                print("Warning: line expected size mismatch!", l.len, "vs actual",len(l.bytes),l.bytes.decode("sjis"))
             # APPEND: above num x addr (minus ofs), flags as given, dont bother (hopefully OK)
             i = 0
             outby += bytes([start_ofs & 0xff, (math.floor(start_ofs /256)) & 0xff])
@@ -466,23 +466,8 @@ class YBCFile():
         _c = 0
         for l in self.lines:
             _c += 1
-            #print(l.bytes.decode("sjis"))
-            #print(hex(len(outby)))
             outby += l.bytes
-            #print(_c, len(l.bytes))
-        #print(len(outby))
-        #if(outby < self.old_bytes):
-        #    print("Rebuild mismatch. Let's do a compare...")
-        #    _l = 0 
-        #    while _l < len(outby):
-        #        assert(outby[_l] == self.old_bytes[_l])
-        #        _l += 1
-        #    print("Compare OK. Appending the extra bytes!")
-        #    outby += self.old_bytes[_l:]
-        #elif(outby > self.old_bytes):
-        #    print("new bytes is too big?? Truncating.")
-        #    outby = outby[:len(self.old_bytes)]
-        
+            
         outby += b'\x00\x00'
 
         #assert(outby == self.old_bytes)
