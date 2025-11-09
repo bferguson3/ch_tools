@@ -462,11 +462,12 @@ class YBCFile():
             i = 0
             outby += bytes([start_ofs & 0xff, (math.floor(start_ofs /256)) & 0xff])
             outby += bytes([l.fin & 0xff, (math.floor(l.fin /256)) & 0xff])
-            start_ofs += l.len
+            start_ofs += len(l.bytes)
         _c = 0
         for l in self.lines:
             _c += 1
             outby += l.bytes
+            #print(l.bytes.decode("sjis"))
             
         outby += b'\x00\x00'
 

@@ -67,6 +67,7 @@ while i < len(script.line_bytes):
         ybc.lines[i].bytes = script.line_bytes[i] + b'\x00\x00'
     else: 
         ybc.lines[i].bytes = script.line_bytes[i] 
+    #print(ybc.lines[i].bytes.decode("sjis"))
     i += 1
 ybc.repopulate()
 
