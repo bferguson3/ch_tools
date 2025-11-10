@@ -14,7 +14,7 @@ class YsScript():
             if(len(self.txt[i]) > 3):
                 _w = 3
                 while _w < len(self.txt[i]):
-                    self.txt[2] += "," + self.txt[_w]
+                    self.txt[2] += "," + self.txt[i][_w]
                     _w += 1
             i += 1
                 #
