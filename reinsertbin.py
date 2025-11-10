@@ -78,7 +78,7 @@ while i < 201:
             _fn = ins
     if found:
         _mfs = os.path.getsize(sys.argv[1] + "/" + _fn) 
-        print(_mfs, "file size")
+        #print(_mfs, "file size")
         _ofs += _mfs + 2
     else:    
         _ofs += 4 #16
@@ -114,6 +114,6 @@ newby = newby[:16] + bytes([(fs_remainder_pos-16)&0xff, math.floor((fs_remainder
 _rem = len(newby) - fs_remainder_pos
 newby = newby[:fs_remainder_pos] + bytes([_rem&0xff, math.floor(_rem/256)&0xff, math.floor(_rem/0x10000)&0xff, 0]) + newby[fs_remainder_pos+4:]
 
-f = open("binout.bin", "wb")
+f = open(os.path.basename(os.path.dirname(sys.argv[1]))+".bin", "wb")
 f.write(newby)
 f.close()

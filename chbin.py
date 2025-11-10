@@ -43,7 +43,6 @@ class CHBIN():
         self.data_addr = le(by[12:16])
         self.addr_two = self.data_addr - 16 # investigate.
         self.data_ct = le(by[20:24])
-        print(self.data_ct, "datas expected")
         if(self.data_ct != 101):
             print("warning: Not 101!!!")
         
@@ -60,7 +59,7 @@ class CHBIN():
         while i < self.data_ct:
             self.data_ptrs_two.append(16 + le(by[_ctr:_ctr+4]))
             _ctr += 4
-            print(hex(16 + le(by[_ctr:_ctr+4])))
+            #print(hex(16 + le(by[_ctr:_ctr+4])))
             i += 1
         # at (self.data_addr): 
         # 4 by- bytes until EOF - 16
