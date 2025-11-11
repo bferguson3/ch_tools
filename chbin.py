@@ -92,6 +92,7 @@ class CHBIN():
             f = open(fl.name, "wb")
             f.write(fl.bytes)
             f.close()
+        # block two 
         i = 0 
         while i < len(self.data_ptrs_two)-1: 
             _fsz = (self.data_addr+self.data_ptrs_two[i+1]) - (self.data_addr+self.data_ptrs_two[i])
@@ -106,7 +107,8 @@ class CHBIN():
                 f.write(fl.bytes)
                 f.close()
             i += 1
-        
+        # note: 
+        # its been verified every .bin file ends with dmf0, so Im skipping this one
     ###
 ###
 

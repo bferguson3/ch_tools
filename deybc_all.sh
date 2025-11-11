@@ -1,4 +1,4 @@
-dir="./SCRIPT/"
+dir="./t0001e/"
 if [ ! -d "$dir" ]; then 
     echo "DAT dir not found"
     exit 1 

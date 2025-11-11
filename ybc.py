@@ -33,7 +33,38 @@ bSCRIPT_CLEANUP = b'\x15\x00\x04\x00'   # 24 終了処理っぽい。解析中�
 bNEXT_CHAPTER = b'\x0f\x00\x08\x00'     # 25 xx 00 00 00	次のChapterファイルへ飛ぶ。次のChapterファイルのパスはヘッダ②で指定したアドレス＋（xx×48バイト）から記述してある。ここでの例の場合は15AE＋（1×48バイト）＝15DE＝フッタ②（下記）になる。
 bEND_SCENE = b'\x13\x00\x04\x00'        # 26
 
-bENDER_SEQ2 = b'\x3c\x00\x00\x20'
+bENDER_SEQ2 = b'\x3c\x00\x00\x20' # ms variable of 3c 
+
+
+# end of t0001_1:
+# bEERASE_TEXT
+# 1f 0 0c 0 # uk cmd 1f-0-c
+# 07 0 0 20 # 7
+# 1e 0 0 20 # 30
+# 1f 0 0c 0 # uk cmd 1f-0-c
+# 08 0 0 20 # 8
+# 1e 0 0 20 # 30
+# 18 0 0c 0  # uk cmd 18-0-c
+# 4. 0  0. 20 # 4 
+# 3  0. 0. 20 # 3 
+# bMS_WAIT # 3c (60)
+# bSCRIPT_CLEANUP
+# bEND_SCENE
+
+# end of file t0001_2: 
+# bERASE_TEXT
+# 1f 0 0c 0 # unknown cmd 1f-0-c
+# 0a 0 0 __ # cmd var 10
+# 1e 0 0 __ # cmd var 30 
+# 18 0 0c 0 # unknown cmd 18-0-c
+# 04 0 0 __ # cmd var 4
+# 03 0 0 __ # cmd var 3
+# bMS_WAIT # var: 3c (60)
+# bSCRIPT_CLEANUP 
+# 76 0 08 0 # unknown cmd 76-0-8 (end combat?)
+# 3c 0 0 __   # cmd var (60)
+# bEND_SCENE
+
 
 class YBCElement():
     def __init__(self, by):
